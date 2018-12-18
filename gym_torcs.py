@@ -8,12 +8,21 @@ import copy
 import collections as col
 import os
 import time
+import math
 
+sign = lambda x: math.copysign(1, x)
+THRASHING_PENALTY_PER_KMH = 1
+THRASHING_PENALTY_PER_KMH_2 = 1
+AVG_SPEED_REWARD = 1
+TRANSVERSE_SPEED_PENALTY = 1
+CUR_SPEED_INCLUDE = 1 # could be {0, 1}
 
 class TorcsEnv:
     terminal_judge_start = 100  # If after 100 timestep still no progress, terminated
     termination_limit_progress = 5  # [km/h], episode terminates if car is running slower than this limit
     default_speed = 50
+    last_steer = 0
+    last_last_steer = 0
 
     initial_reset = True
 
@@ -134,8 +143,14 @@ class TorcsEnv:
         damage = np.array(obs['damage'])
         rpm = np.array(obs['rpm'])
 
-        progress = sp*np.cos(obs['angle']) - np.abs(sp*np.sin(obs['angle'])) - sp * np.abs(obs['trackPos'])
+        progress = CUR_SPEED_INCLUDE * (sp*np.cos(obs['angle'])) - np.abs(sp*np.sin(obs['angle'])) * (TRANSVERSE_SPEED_PENALTY * obs['speedY'] + 1) - sp * (np.abs(obs['trackPos']))
         reward = progress
+	if sign((-1) * self.last_steer) == sign(this_action['steer']):
+	    reward -= THRASHING_PENALTY_PER_KMH * sp
+	if sign((-1) * (self.last_steer - self.last_last_steer)) == sign(this_action['steer'] - self.last_steer):
+	    reward -= THRASHING_PENALTY_PER_KMH_2 * sp
+	    
+	reward += (obs['distFromStart'] / obs['curLapTime']) * AVG_SPEED_REWARD
 
         # collision detection
         if obs['damage'] - obs_pre['damage'] > 0:
@@ -164,6 +179,8 @@ class TorcsEnv:
             client.respond_to_server()
 
         self.time_step += 1
+        self.last_last_steer = self.last_steer
+        self.last_steer = this_action['steer']
 
         return self.get_obs(), reward, client.R.d['meta'], {}
 
