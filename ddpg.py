@@ -19,7 +19,7 @@ import timeit
 OU = OU()       #Ornstein-Uhlenbeck Process
 
 def playGame(train_indicator=0):    #1 means Train, 0 means simply Run
-    BUFFER_SIZE = 100000
+    BUFFER_SIZE = 5000
     BATCH_SIZE = 32
     GAMMA = 0.99
     TAU = 0.001     #Target Network HyperParameters
@@ -33,9 +33,9 @@ def playGame(train_indicator=0):    #1 means Train, 0 means simply Run
 
     vision = False
 
-    EXPLORE = 100000.
+    EXPLORE = 5000.
     episode_count = 2000
-    max_steps = 100000
+    max_steps = 5000
     reward = 0
     done = False
     step = 0
